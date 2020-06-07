@@ -3,10 +3,11 @@ import { promises as fsPromise } from 'fs';
 import * as crypto from 'crypto';
 import * as mongoose from 'mongoose';
 import * as bowser from 'bowser';
-import { resolve as pathResolve } from 'path';
+// import { resolve as pathResolve } from 'path';
 import { LogSchema } from './logs/schemas/log.schema';
-import awaitTo from 'await-to-js';
+import to from 'await-to-js';
 // import * as libqqwry from 'lib-qqwry';
+const libqqwry = require('lib-qqwry');
 
 const provinces = ['河南', '河北', '北京', '天津', '山东', '山西', '黑龙江', '吉林', '辽宁', '浙江', '江苏', '上海', '安徽', '江西', '湖南', '湖北',
   '新疆', '云南', '贵州', '福建', '台湾', '宁夏', '西藏', '四川', '重庆', '内蒙古', '广西', '海南', '青海', '甘肃', '陕西', '广东', '香港', '澳门'];
@@ -14,11 +15,11 @@ const provinces = ['河南', '河北', '北京', '天津', '山东', '山西', '
 const pattern = /^(?<ipAddress>[\d\.]+)\s-\s-\s\[(?<accessTime>[^\!]+)\]\s"(?<requestMethod>\w+)\s(?<requestPath>[^\s]+)\s(?<protocol>[\w\/\.]+)"\s(?<requestState>\d+)\s(?<pageSize>\d+)\s"(?<sourcePage>[^\s]+)"\s"(?<userAgent>[^\[]+)"/;
 const word2No = new Map([['Jan', '01'], ['Feb', '02'], ['Mar', '03'], ['Apr', '04'], ['May', '05'], ['Jun', '06'], ['Jul', '07'], ['Aug', '08'], ['Sep', '09'], ['Oct', '10'], ['Nov', '11'], ['Dec', '12']]);
 
-const FILE = pathResolve(__dirname, '../access.log');
+const FILE = '/var/log/nginx/access.log';
 const LogModel = mongoose.model('Log', LogSchema, 'logs');
 let lineNo = 0;
-// const qqwry = libqqwry();
-// qqwry.speed();
+const qqwry = libqqwry();
+qqwry.speed();
 
 function getId(str: string): string {
   const createHashByMd5 = crypto.createHash('md5');
@@ -32,21 +33,21 @@ function array2Object(result: RegExpMatchArray, id: string): object {
   const accessTime = new Date(`${arr.groups.year}-${word2No.get(arr.groups.month)}-${arr.groups.date}T${arr.groups.time}${arr.groups.diff}`);
   const userAgent = bowser.getParser(result.groups.userAgent).parse();
   const { ipAddress, requestMethod, requestPath, protocol, requestState, pageSize, sourcePage } = result.groups;
-  // let address = qqwry.searchIP(ipAddress).Country;
-  // if (address === '本机地址' || address === '局域网') {
-  //   address = '广州';
-  // } else {
-  //   for (const province of provinces) {
-  //     if (address.includes(province)) {
-  //       address = province;
-  //       break;
-  //     }
-  //   }
-  // }
+  let address = qqwry.searchIP(ipAddress).Country;
+  if (address === '本机地址' || address === '局域网') {
+    address = '广州';
+  } else {
+    for (const province of provinces) {
+      if (address.includes(province)) {
+        address = province;
+        break;
+      }
+    }
+  }
   return {
     _id: id,
     ipAddress,
-    // address,
+    address,
     accessTime,
     requestMethod,
     requestPath,
@@ -68,7 +69,7 @@ async function handleRecords(records: string[]) {
       result && dataArr.push(array2Object(result, id));
     }
   });
-  const [err] = await awaitTo(LogModel.insertMany(dataArr));
+  const [err] = await to(LogModel.insertMany(dataArr));
   err && console.log(err);
 }
 
