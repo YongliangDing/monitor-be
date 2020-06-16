@@ -1,10 +1,10 @@
 import { Model } from 'mongoose';
 import { Injectable, Inject } from '@nestjs/common';
-import { IAggregateResult, CountByVersion, Log } from './datatype';
+import { IAggregateResult, CountByVersion, ILog } from './datatype';
 
 @Injectable()
 export class LogsService {
-  constructor(@Inject('LogModelToken') private readonly logModel: Model<Log>) { }
+  constructor(@Inject('LogModelToken') private readonly logModel: Model<ILog>) { }
 
   firstDate() {
     return this.logModel.aggregate([
@@ -13,42 +13,30 @@ export class LogsService {
     ]).limit(1);
   }
 
-  countByDatePv(): Promise<IAggregateResult[]> {
-    return this.logModel.aggregate([
+  countByDatePv(startDate?: Date, endDate?: Date): Promise<IAggregateResult[]> {
+    const aggregateArr: any[] = [
       { $project: { _id: 0, formatDate: { $dateToString: { format: '%Y-%m-%d', timezone: '+08', date: '$accessTime' } } } },
       { $group: { _id: '$formatDate', total: { $sum: 1 } } },
       { $sort: { _id: 1 } },
-    ]);
+    ];
+    if (startDate && endDate) {
+      aggregateArr.unshift({ $match: { accessTime: { $gte: startDate, $lt: endDate } } });
+    }
+    return this.logModel.aggregate(aggregateArr);
   }
 
-  countByDateUv(): Promise<IAggregateResult[]> {
-    return this.logModel.aggregate([
+  countByDateUv(startDate?: Date, endDate?: Date): Promise<IAggregateResult[]> {
+    const aggregateArr: any[] = [
       { $project: { _id: 0, ipAddress: 1, formatDate: { $dateToString: { format: '%Y-%m-%d', timezone: '+08', date: '$accessTime' } } } },
       { $group: { _id: { formatDate: '$formatDate', ipAddress: '$ipAddress' } } },
       { $project: { _id: 0, formatDate: '$_id.formatDate', ipAddress: '$_id.ipAddress' } },
       { $group: { _id: '$formatDate', total: { $sum: 1 } } },
       { $sort: { _id: 1 } },
-    ]);
-  }
-
-  countBySelectedDatesPv(startDate: Date, endDate: Date): Promise<IAggregateResult[]> {
-    return this.logModel.aggregate([
-      { $match: { accessTime: { $gte: startDate, $lt: endDate } } },
-      { $project: { _id: 0, formatDate: { $dateToString: { format: '%Y-%m-%d', timezone: '+08', date: '$accessTime' } } } },
-      { $group: { _id: '$formatDate', total: { $sum: 1 } } },
-      { $sort: { _id: 1 } },
-    ]);
-  }
-
-  countBySelectedDatesUv(startDate: Date, endDate: Date): Promise<IAggregateResult[]> {
-    return this.logModel.aggregate([
-      { $match: { accessTime: { $gte: startDate, $lt: endDate } } },
-      { $project: { _id: 0, ipAddress: 1, formatDate: { $dateToString: { format: '%Y-%m-%d', timezone: '+08', date: '$accessTime' } } } },
-      { $group: { _id: { formatDate: '$formatDate', ipAddress: '$ipAddress' } } },
-      { $project: { _id: 0, formatDate: '$_id.formatDate', ipAddress: '$_id.ipAddress' } },
-      { $group: { _id: '$formatDate', total: { $sum: 1 } } },
-      { $sort: { _id: 1 } },
-    ]);
+    ];
+    if (startDate && endDate) {
+      aggregateArr.unshift({ $match: { accessTime: { $gte: startDate, $lt: endDate } } },);
+    }
+    return this.logModel.aggregate(aggregateArr);
   }
 
   countByHour(startDate: Date, endDate: Date): Promise<IAggregateResult[]> {
@@ -59,7 +47,7 @@ export class LogsService {
     ]);
   }
 
-  countByState(startDate: Date, endDate: Date) {
+  countByState(startDate: Date, endDate: Date): Promise<IAggregateResult[]> {
     return this.logModel.aggregate([
       { $match: { accessTime: { $gte: startDate, $lt: endDate } } },
       { $group: { _id: '$requestState', total: { $sum: 1 } } },
@@ -67,7 +55,7 @@ export class LogsService {
     ]);
   }
 
-  countByMethod(startDate: Date, endDate: Date) {
+  countByMethod(startDate: Date, endDate: Date): Promise<IAggregateResult[]> {
     return this.logModel.aggregate([
       { $match: { accessTime: { $gte: startDate, $lt: endDate } } },
       { $group: { _id: '$requestMethod', total: { $sum: 1 } } },
@@ -91,15 +79,15 @@ export class LogsService {
     ]);
   }
 
-  findAll(): Promise<Log[]> {
+  findAll(): Promise<ILog[]> {
     return this.logModel.find().exec();
   }
 
-  findOnePage(index): Promise<Log[]> {
+  findOnePage(index): Promise<ILog[]> {
     return this.logModel.find().skip((index - 1) * 5).limit(5);
   }
 
-  findOnePageByRange(index, startDate: Date, endDate: Date, state): Promise<Log[]> {
+  findOnePageByRange(index, startDate: Date, endDate: Date, state): Promise<ILog[]> {
     if (!state) {
       return this.logModel.find({
         $and: [{ accessTime: { $gte: startDate } }, { accessTime: { $lt: endDate } }],
@@ -157,7 +145,7 @@ export class LogsService {
     ]);
   }
 
-  countByBrowserVersion2(startDate: Date, endDate: Date, os: string, version: string): Promise<CountByVersion> {
+  countByBrowserVersion2(startDate: Date, endDate: Date, os: string, version: string): Promise<CountByVersion[]> {
     return this.logModel.aggregate([
       {
         $match: {
@@ -172,7 +160,7 @@ export class LogsService {
       { $sort: { '_id.name': 1 } },
     ]);
   }
-  countByUser(startDate: Date, endDate: Date) {
+  countByUser(startDate: Date, endDate: Date): Promise<IAggregateResult[]> {
     return this.logModel.aggregate([
       { $match: { accessTime: { $gte: startDate, $lt: endDate } } },
       { $group: { _id: '$ipAddress', total: { $sum: 1 } } },
@@ -180,7 +168,7 @@ export class LogsService {
     ]);
   }
 
-  countBySourcePage(startDate: Date, endDate: Date) {
+  countBySourcePage(startDate: Date, endDate: Date): Promise<IAggregateResult[]> {
     return this.logModel.aggregate([
       { $match: { accessTime: { $gte: startDate, $lt: endDate } } },
       { $group: { _id: '$sourcePage', total: { $sum: 1 } } },
@@ -188,7 +176,7 @@ export class LogsService {
     ]);
   }
 
-  countByRequestPath(startDate: Date, endDate: Date) {
+  countByRequestPath(startDate: Date, endDate: Date): Promise<IAggregateResult[]> {
     return this.logModel.aggregate([
       { $match: { accessTime: { $gte: startDate, $lt: endDate } } },
       { $group: { _id: '$requestPath', total: { $sum: 1 } } },
@@ -196,7 +184,7 @@ export class LogsService {
     ]);
   }
 
-  countByAddress(startDate: Date, endDate: Date) {
+  countByAddress(startDate: Date, endDate: Date): Promise<IAggregateResult[]> {
     return this.logModel.aggregate([
       { $match: { accessTime: { $gte: startDate, $lt: endDate } } },
       { $group: { _id: '$address', total: { $sum: 1 } } },

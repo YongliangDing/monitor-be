@@ -19,27 +19,22 @@ export interface IAggregateResult {
   total: number;
 }
 
-interface NameVersion {
-  name?: string;
-  version?: string;
-}
-
-export interface CountByVersion {
-  _id: NameVersion;
-  total: number;
-}
-
 export interface IEchartsNestedPiesData {
   countByName: IAggregateResult[];
   countByVersion: CountByVersion[];
 }
 
-export interface PieBrowser {
-  countByBrowserName: IAggregateResult[];
-  countByBrowserVersion: CountByVersion[];
+interface INameVersion {
+  name?: string;
+  version?: string;
 }
 
-export interface Log {
+export interface CountByVersion {
+  _id: INameVersion;
+  total: number;
+}
+
+export interface ILog {
   _id: string;
   ipAddress: string;
   accessTime: Date;
@@ -52,7 +47,12 @@ export interface Log {
   userAgent: object;
 }
 
-export interface Table {
+export interface ITable {
   length: number;
-  onePage: Log[];
+  onePage: ILog[];
+}
+
+export interface IDateRange {
+  startDate?: number,
+  endDate?: number,
 }
