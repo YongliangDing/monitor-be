@@ -1,6 +1,6 @@
 import { LogsService } from './logs.service';
 import { Controller, Get, Query } from '@nestjs/common';
-import { IEchartsNestedPiesData, PieBrowser, Table, IEchartsCommonData, IEchartsPieData, IAggregateResult } from './datatype';
+import { IEchartsNestedPiesData, Table, IEchartsCommonData, IEchartsPieData, IAggregateResult } from './datatype';
 import to from 'await-to-js';
 
 @Controller()
@@ -14,8 +14,8 @@ export class LogsController {
     let pvPromise: Promise<IAggregateResult[]>;
     let uvPromise: Promise<IAggregateResult[]>;
     if (query.startDate && query.endDate) {
-      startDate = new Date(query.startDate);
-      endDate = new Date(query.endDate);
+      startDate = new Date(+query.startDate);
+      endDate = new Date(+query.endDate);
       pvPromise = this.logsService.countBySelectedDatesPv(startDate, endDate);
       uvPromise = this.logsService.countBySelectedDatesUv(startDate, endDate);
     } else {
@@ -45,19 +45,20 @@ export class LogsController {
 
   @Get('/count/map')
   async handleAddress(@Query() query): Promise<IAggregateResult> {
-    const startDate = new Date(query.startDate);
+    const startDate = new Date(+query.startDate);
     const endDate = query.endDate
-      ? new Date(query.endDate)
+      ? new Date(+query.endDate)
       : new Date(startDate.getTime() + 86400000);
     return await this.logsService.countByAddress(startDate, endDate);
   }
 
   @Get('/count/hour')
   async handleLine(@Query() query): Promise<IEchartsCommonData> {
-    const startDate = new Date(query.startDate);
+    const startDate = new Date(+query.startDate);
     const endDate = query.endDate
-      ? new Date(query.endDate)
+      ? new Date(+query.endDate)
       : new Date(startDate.getTime() + 86400000);
+
     const logCount = await this.logsService.countByHour(startDate, endDate);
     logCount.sort((a, b) => (+a._id) - (+b._id));
     const result = {
@@ -82,9 +83,9 @@ export class LogsController {
 
   @Get('/count/os')
   async handleINameVersion(@Query() query): Promise<IEchartsNestedPiesData> {
-    const startDate = new Date(query.startDate);
+    const startDate = new Date(+query.startDate);
     const endDate = query.endDate
-      ? new Date(query.endDate)
+      ? new Date(+query.endDate)
       : new Date(startDate.getTime() + 86400000);
     const countByNamePromise = this.logsService.countByOSName(startDate, endDate);
     const countByVersionPromise = this.logsService.countByOSVersion(startDate, endDate);
@@ -101,9 +102,9 @@ export class LogsController {
 
   @Get('/count/browser')
   async handlePieBrowser(@Query() query): Promise<IEchartsNestedPiesData> {
-    const startDate = new Date(query.startDate);
+    const startDate = new Date(+query.startDate);
     const endDate = query.endDate
-      ? new Date(query.endDate)
+      ? new Date(+query.endDate)
       : new Date(startDate.getTime() + 86400000);
     let countByNamePromise: Promise<IAggregateResult[]>;
     let countByVersion;
@@ -128,8 +129,8 @@ export class LogsController {
 
   @Get('/detail')
   async handleTable(@Query() query): Promise<Table> {
-    const startDate = new Date(query.startDate);
-    const endDate = new Date(query.endDate);
+    const startDate = new Date(+query.startDate);
+    const endDate = new Date(+query.endDate);
     const lengthPromise = this.logsService.getCollectionLengthByRange(startDate, endDate, query.state);
     const length = await lengthPromise;
     const onePage = await this.logsService.findOnePageByRange(query.pageIndex, startDate, endDate, query.state);
@@ -141,9 +142,9 @@ export class LogsController {
 
   @Get('/count/state')
   async handleState(@Query() query): Promise<IEchartsPieData> {
-    const startDate = new Date(query.startDate);
+    const startDate = new Date(+query.startDate);
     const endDate = query.endDate
-      ? new Date(query.endDate)
+      ? new Date(+query.endDate)
       : new Date(startDate.getTime() + 86400000);
     const logCount = await this.logsService.countByState(startDate, endDate);
     const result = {
@@ -162,9 +163,9 @@ export class LogsController {
 
   @Get('/reqandres/method')
   async handleMethod(@Query() query) {
-    const startDate = new Date(query.startDate);
+    const startDate = new Date(+query.startDate);
     const endDate = query.endDate
-      ? new Date(query.endDate)
+      ? new Date(+query.endDate)
       : new Date(startDate.getTime() + 86400000);
     const logCount = await this.logsService.countByMethod(startDate, endDate);
     const result = {
@@ -180,9 +181,9 @@ export class LogsController {
 
   @Get('/ranking/user')
   async handleUser(@Query() query) {
-    const startDate = new Date(query.startDate);
+    const startDate = new Date(+query.startDate);
     const endDate = query.endDate
-      ? new Date(query.endDate)
+      ? new Date(+query.endDate)
       : new Date(startDate.getTime() + 86400000);
     const logCount = await this.logsService.countByUser(startDate, endDate);
     const xAxisData = [];
@@ -199,9 +200,9 @@ export class LogsController {
 
   @Get('/ranking/source-page')
   async handleSourcePage(@Query() query) {
-    const startDate = new Date(query.startDate);
+    const startDate = new Date(+query.startDate);
     const endDate = query.endDate
-      ? new Date(query.endDate)
+      ? new Date(+query.endDate)
       : new Date(startDate.getTime() + 86400000);
     const logCount = await this.logsService.countBySourcePage(startDate, endDate);
     const xAxisData = [];
@@ -218,9 +219,9 @@ export class LogsController {
 
   @Get('/ranking/request-path')
   async handleRequestPath(@Query() query) {
-    const startDate = new Date(query.startDate);
+    const startDate = new Date(+query.startDate);
     const endDate = query.endDate
-      ? new Date(query.endDate)
+      ? new Date(+query.endDate)
       : new Date(startDate.getTime() + 86400000);
     const logCount = await this.logsService.countByRequestPath(startDate, endDate);
     const xAxisData = [];
