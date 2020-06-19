@@ -83,11 +83,11 @@ export class LogsService {
     return this.logModel.find().exec();
   }
 
-  findOnePage(index): Promise<ILog[]> {
+  findOnePage(index: number): Promise<ILog[]> {
     return this.logModel.find().skip((index - 1) * 5).limit(5);
   }
 
-  findOnePageByRange(index, startDate: Date, endDate: Date, state): Promise<ILog[]> {
+  findOnePageByRange(index: number, startDate: Date, endDate: Date, state): Promise<ILog[]> {
     if (!state) {
       return this.logModel.find({
         $and: [{ accessTime: { $gte: startDate } }, { accessTime: { $lt: endDate } }],

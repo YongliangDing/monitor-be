@@ -2,10 +2,11 @@ import { LogsService } from './logs.service';
 import { Controller, Get, Query } from '@nestjs/common';
 import { IEchartsNestedPiesData, IEchartsCommonData, IEchartsPieData, IAggregateResult, ITable, IDateRange, CountByVersion } from './datatype';
 import to from 'await-to-js';
+import { WatchService } from './log.watch.service';
 
 @Controller()
 export class LogsController {
-  constructor(private readonly logsService: LogsService) { }
+  constructor(private readonly logsService: LogsService, private watchService: WatchService) { }
 
   @Get('/count/date')
   async handleDateCount(@Query() query: IDateRange): Promise<IEchartsCommonData> {
@@ -114,9 +115,14 @@ export class LogsController {
   async handleTable(@Query() query): Promise<ITable> {
     const startDate = new Date(+query.startDate);
     const endDate = new Date(+query.endDate);
-    const lengthPromise = this.logsService.getCollectionLengthByRange(startDate, endDate, query.state);
-    const length = await lengthPromise;
-    const onePage = await this.logsService.findOnePageByRange(query.pageIndex, startDate, endDate, query.state);
+    const [err, [length, onePage]] = await to(Promise.all([
+      this.logsService.getCollectionLengthByRange(startDate, endDate, query.state),
+      this.logsService.findOnePageByRange(query.pageIndex, startDate, endDate, query.state)
+    ]))
+    if(err) {
+      console.log(err);
+      return;
+    }
     return { length, onePage };
   }
 
