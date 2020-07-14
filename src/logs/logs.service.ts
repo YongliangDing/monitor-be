@@ -1,10 +1,25 @@
 import { Model } from 'mongoose';
+import { IDLog } from './interfaces/log.interface';
 import { Injectable, Inject } from '@nestjs/common';
-import { IAggregateResult, CountByVersion, ILog } from './datatype';
+import { IAggregateResult, CountByVersion, ILog, IFormData } from './datatype';
+
+function finishFindObj(findObj: any, form: IFormData) {
+  let keys = Object.keys(form);
+  keys = keys.filter(x => !!form[x]);
+  keys.forEach(key => {
+    if (key === 'os') {
+      findObj.$and.push({'userAgent.parsedResult.os.name': form[key]});
+    } else if (key === 'browser') {
+      findObj.$and.push({'userAgent.parsedResult.browser.name': form[key]});
+    } else {
+      findObj.$and.push({[key]: form[key]});
+    }
+  });
+}
 
 @Injectable()
 export class LogsService {
-  constructor(@Inject('LogModelToken') private readonly logModel: Model<ILog>) { }
+  constructor(@Inject('LogModelToken') private readonly logModel: Model<IDLog>) { }
 
   firstDate() {
     return this.logModel.aggregate([
@@ -80,44 +95,62 @@ export class LogsService {
   }
 
   findAll(): Promise<ILog[]> {
-    return this.logModel.find().exec();
+    return this.logModel
+      .find()
+      .exec();
   }
 
   findOnePage(index: number): Promise<ILog[]> {
-    return this.logModel.find().skip((index - 1) * 5).limit(5);
+    return this.logModel
+      .find().skip((index - 1) * 5)
+      .limit(5);
   }
 
-  findOnePageByRange(index: number, startDate: Date, endDate: Date, state): Promise<ILog[]> {
-    if (!state) {
-      return this.logModel.find({
-        $and: [{ accessTime: { $gte: startDate } }, { accessTime: { $lt: endDate } }],
-      }).sort({ accessTime: 1 }).skip((index - 1) * 5).limit(5);
-    } else {
-      return this.logModel.find({
-        $and: [{ accessTime: { $gte: startDate } }, { accessTime: { $lt: endDate } }, { requestState: state }],
-      }).sort({ accessTime: 1 }).skip((index - 1) * 5).limit(5);
+  findOnePageByRange(index: number, startDate: Date, endDate: Date, size: number, form: IFormData): Promise<ILog[]> {
+    const findObj = {
+      $and: [
+        { accessTime: { $gte: startDate } },
+        { accessTime: { $lt: endDate } }
+      ],
     }
+
+    if (!!form) {
+      finishFindObj(findObj, form);
+    }
+
+    return this.logModel
+      .find(findObj)
+      .sort({ accessTime: 1 })
+      .skip((index - 1) * size)
+      .limit(size);
   }
 
   getCollectionLength(): Promise<number> {
-    return this.logModel.find().countDocuments();
+    return this.logModel
+      .find()
+      .countDocuments();
   }
 
-  getCollectionLengthByRange(startDate: Date, endDate: Date, state): Promise<number> {
-    if (!state) {
-      return this.logModel.find({
-        $and: [{ accessTime: { $gte: startDate } }, { accessTime: { $lt: endDate } }],
-      }).countDocuments();
-    } else {
-      return this.logModel.find({
-        $and: [{ accessTime: { $gte: startDate } }, { accessTime: { $lt: endDate } }, { requestState: state }],
-      }).countDocuments();
+  getCollectionLengthByRange(startDate: Date, endDate: Date, form: IFormData): Promise<number> {
+    const findObj: any = {
+      $and: [
+        { accessTime: { $gte: startDate } },
+        { accessTime: { $lt: endDate } }
+      ],
+    };
+    if (!!form) {
+      finishFindObj(findObj, form);
     }
+      
+    return this.logModel
+      .find(findObj)
+      .countDocuments();
   }
 
-  countByBrowserName(startDate: Date, endDate: Date, os: string): Promise<IAggregateResult[]> {
+  countByBrowserName(startDate: Date, endDate: Date): Promise<IAggregateResult[]> {
     return this.logModel.aggregate([
-      { $match: { $and: [{ accessTime: { $gte: startDate, $lt: endDate } }, { 'userAgent.parsedResult.os.name': os }] } },
+      // { 'userAgent.parsedResult.os.name': os }] } 
+      { $match: { $and: [{ accessTime: { $gte: startDate, $lt: endDate } }] } },
       { $group: { _id: '$userAgent.parsedResult.browser.name', total: { $sum: 1 } } },
       { $sort: { _id: 1 } },
     ]);
@@ -137,9 +170,10 @@ export class LogsService {
     ]);
   }
 
-  countByBrowserVersion(startDate: Date, endDate: Date, os: string): Promise<CountByVersion[]> {
+  countByBrowserVersion(startDate: Date, endDate: Date): Promise<CountByVersion[]> {
     return this.logModel.aggregate([
-      { $match: { $and: [{ accessTime: { $gte: startDate, $lt: endDate } }, { 'userAgent.parsedResult.os.name': os }] } },
+      // , { 'userAgent.parsedResult.os.name': os }
+      { $match: { $and: [{ accessTime: { $gte: startDate, $lt: endDate } }] } },
       { $group: { _id: { name: '$userAgent.parsedResult.browser.name', version: '$userAgent.parsedResult.browser.version' }, total: { $sum: 1 } } },
       { $sort: { '_id.name': 1 } },
     ]);
@@ -160,6 +194,7 @@ export class LogsService {
       { $sort: { '_id.name': 1 } },
     ]);
   }
+
   countByUser(startDate: Date, endDate: Date): Promise<IAggregateResult[]> {
     return this.logModel.aggregate([
       { $match: { accessTime: { $gte: startDate, $lt: endDate } } },

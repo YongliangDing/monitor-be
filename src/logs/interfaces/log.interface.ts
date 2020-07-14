@@ -1,6 +1,6 @@
 import { Document } from 'mongoose';
 
-export interface Log extends Document {
+export interface IDLog extends Document {
   readonly _id: string;
   readonly ipAddress: string;
   readonly address: string;

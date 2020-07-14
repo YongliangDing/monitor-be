@@ -1,12 +1,15 @@
-import { LogsService } from './logs.service';
-import { Controller, Get, Query } from '@nestjs/common';
-import { IEchartsNestedPiesData, IEchartsCommonData, IEchartsPieData, IAggregateResult, ITable, IDateRange, CountByVersion } from './datatype';
 import to from 'await-to-js';
+import { LogsService } from './logs.service';
+import { Controller, Get, Query, Post, Body } from '@nestjs/common';
+import { IEchartsNestedPiesData, IEchartsCommonData, IEchartsPieData, IAggregateResult, ITable, IDateRange, CountByVersion } from './datatype';
 import { WatchService } from './log.watch.service';
 
 @Controller()
 export class LogsController {
-  constructor(private readonly logsService: LogsService, private watchService: WatchService) { }
+  constructor(
+    private readonly logsService: LogsService,
+    private readonly watchService: WatchService
+  ) { }
 
   @Get('/count/date')
   async handleDateCount(@Query() query: IDateRange): Promise<IEchartsCommonData> {
@@ -90,15 +93,15 @@ export class LogsController {
     let countByNamePromise: Promise<IAggregateResult[]>;
     let countByVersionPromise: Promise<CountByVersion[]>;
 
-    if (/\s/.test(query.os)) {
-      const osPattern = /(?<name>[A-Za-z]+)\s+(?<version>[\w\s\.]+)/;
-      const { name, version } = query.os.match(osPattern).groups;
-      countByNamePromise = this.logsService.countByBrowserName2(startDate, endDate, name, version);
-      countByVersionPromise =  this.logsService.countByBrowserVersion2(startDate, endDate, name, version);
-    } else {
-      countByNamePromise = this.logsService.countByBrowserName(startDate, endDate, query.os);
-      countByVersionPromise = this.logsService.countByBrowserVersion(startDate, endDate, query.os);
-    }
+    // if (/\s/.test(query.os)) {
+    //   const osPattern = /(?<name>[A-Za-z]+)\s+(?<version>[\w\s\.]+)/;
+    //   const { name, version } = query.os.match(osPattern).groups;
+    //   countByNamePromise = this.logsService.countByBrowserName2(startDate, endDate, name, version);
+    //   countByVersionPromise =  this.logsService.countByBrowserVersion2(startDate, endDate, name, version);
+    // } else {
+      countByNamePromise = this.logsService.countByBrowserName(startDate, endDate);
+      countByVersionPromise = this.logsService.countByBrowserVersion(startDate, endDate);
+    // }
 
     const [err, [countByName, countByVersion]] = await to(Promise.all([
       countByNamePromise,
@@ -109,21 +112,6 @@ export class LogsController {
       return;
     }
     return { countByName, countByVersion };
-  }
-
-  @Get('/detail')
-  async handleTable(@Query() query): Promise<ITable> {
-    const startDate = new Date(+query.startDate);
-    const endDate = new Date(+query.endDate);
-    const [err, [length, onePage]] = await to(Promise.all([
-      this.logsService.getCollectionLengthByRange(startDate, endDate, query.state),
-      this.logsService.findOnePageByRange(query.pageIndex, startDate, endDate, query.state)
-    ]))
-    if(err) {
-      console.log(err);
-      return;
-    }
-    return { length, onePage };
   }
 
   @Get('/count/state')
@@ -196,4 +184,18 @@ export class LogsController {
     return { xAxisData, seriesData1 };
   }
 
+  @Post('/detail')
+  async handleTable(@Body() body): Promise<ITable> {
+    const startDate = new Date(+body.startDate);
+    const endDate = new Date(+body.endDate);
+    const [err, [length, onePage]] = await to(Promise.all([
+      this.logsService.getCollectionLengthByRange(startDate, endDate, body.formData),
+      this.logsService.findOnePageByRange(body.pageIndex, startDate, endDate, +body.size, body.formData)
+    ]));
+    if(err) {
+      console.log(err);
+      return;
+    }
+    return { length, onePage };
+  }
 }

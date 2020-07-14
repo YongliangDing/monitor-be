@@ -37,6 +37,7 @@ export interface CountByVersion {
 export interface ILog {
   _id: string;
   ipAddress: string;
+  address: string;
   accessTime: Date;
   requestMethod: string;
   requestPath: string;
@@ -44,7 +45,7 @@ export interface ILog {
   requestState: string;
   pageSize: string;
   sourcePage: string;
-  userAgent: object;
+  userAgent: any;
 }
 
 export interface ITable {
@@ -55,4 +56,13 @@ export interface ITable {
 export interface IDateRange {
   startDate?: number,
   endDate?: number,
+}
+
+export interface IFormData {
+  ipAddress: string;
+  requestMethod: string;
+  protocol: string;
+  requestState: string;
+  os: string;
+  browser: string;
 }
