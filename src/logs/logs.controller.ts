@@ -3,6 +3,7 @@ import { LogsService } from './logs.service';
 import { Controller, Get, Query, Post, Body } from '@nestjs/common';
 import { IEchartsNestedPiesData, IEchartsCommonData, IEchartsPieData, IAggregateResult, ITable, IDateRange, CountByVersion } from './datatype';
 import { WatchService } from './log.watch.service';
+import { async } from 'rxjs/internal/scheduler/async';
 
 @Controller()
 export class LogsController {
@@ -197,5 +198,19 @@ export class LogsController {
       return;
     }
     return { length, onePage };
+  }
+
+  @Get('/statistics/today')
+  async handleToday() {
+    const today = new Date();
+    return (await this.logsService.countByDatePv(
+      new Date(today.setHours(0, 0, 0)), 
+      new Date(today.setHours(23,59,59))
+    ))[0].total;
+  }
+  
+  @Get('/statistics/history')
+  async handleHistory() {
+    return await this.logsService.getCollectionLength();
   }
 }
