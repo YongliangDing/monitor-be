@@ -38,7 +38,7 @@ export interface ILog {
   _id: string;
   ipAddress: string;
   address: string;
-  accessTime: Date;
+  accessTime: number;
   requestMethod: string;
   requestPath: string;
   protocol: string;

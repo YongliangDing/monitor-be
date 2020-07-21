@@ -3,7 +3,7 @@ export class CreateLogDto {
   readonly _id: string;
   readonly ipAddress: string;
   readonly address: string;
-  readonly accessTime: Date;
+  readonly accessTime: number;
   readonly requestMethod: string;
   readonly requestPath: string;
   readonly protocol: string;

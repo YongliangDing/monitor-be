@@ -4,7 +4,7 @@ export const LogSchema = new Schema({
   _id: String,
   ipAddress: String,
   address: String,
-  accessTime: Date,
+  accessTime: Number,
   requestMethod: String,
   requestPath: String,
   protocol: String,

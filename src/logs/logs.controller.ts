@@ -36,11 +36,6 @@ export class LogsController {
     return { xAxisData, seriesData1, seriesData2 };
   }
 
-  @Get('/first-date')
-  async handlefirstDate() {
-    return await this.logsService.firstDate();
-  }
-
   @Get('/count/map')
   async handleAddressCount(@Query() query: IDateRange): Promise<IAggregateResult[]> {
     const startDate = new Date(+query.startDate);
