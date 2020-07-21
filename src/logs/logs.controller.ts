@@ -1,9 +1,8 @@
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import to from 'await-to-js';
-import { LogsService } from './logs.service';
-import { Controller, Get, Query, Post, Body } from '@nestjs/common';
-import { IEchartsNestedPiesData, IEchartsCommonData, IEchartsPieData, IAggregateResult, ITable, IDateRange, CountByVersion } from './datatype';
+import { CountByVersion, IAggregateResult, IDateRange, IEchartsCommonData, IEchartsNestedPiesData, IEchartsPieData, ITable } from './interfaces/log.interface';
 import { WatchService } from './log.watch.service';
-import { async } from 'rxjs/internal/scheduler/async';
+import { LogsService } from './logs.service';
 
 @Controller()
 export class LogsController {
@@ -17,7 +16,7 @@ export class LogsController {
     const hasDateRange = (query.startDate && query.endDate) ? true : false;
     const startDate = hasDateRange ? new Date(+query.startDate) : null;
     const endDate = hasDateRange ? new Date(+query.endDate) : null;
-    const [err, arr] = await to(Promise.all([
+    const [err, [pv, uv]] = await to(Promise.all([
       this.logsService.countByDatePv(startDate, endDate),
       this.logsService.countByDateUv(startDate, endDate)
     ]));
@@ -25,20 +24,12 @@ export class LogsController {
       console.error(err);
       return;
     }
-    const xAxisData = [];
-    const seriesData1 = [];
-    const seriesData2 = [];
-    arr[0].forEach(ele => {
-      xAxisData.push(ele._id);
-      seriesData1.push(ele.total);
-    });
-    arr[1].forEach(ele => seriesData2.push(ele.total));
-    return { xAxisData, seriesData1, seriesData2 };
-  }
-
-  @Get('/first-date')
-  async handlefirstDate() {
-    return await this.logsService.firstDate();
+    const xAxisData = pv.map(o => o._id);
+    const seriesData = [
+      pv.map(o => o.total),
+      uv.map(o => o.total)
+    ];
+    return { xAxisData, seriesData };
   }
 
   @Get('/count/map')
@@ -54,22 +45,19 @@ export class LogsController {
     const endDate = query.endDate ? new Date(+query.endDate) : new Date(startDate.getTime() + 86400000);
     const logCount = await this.logsService.countByHour(startDate, endDate);
     logCount.sort((a, b) => (+a._id) - (+b._id));
-    const xAxisData = [];
-    const seriesData1 = [];
-    logCount.forEach(o => {
-      xAxisData.push(o._id);
-      seriesData1.push(o.total);
-    });
+    const xAxisData = logCount.map(o => o._id);
+    const seriesData1 = logCount.map(o => o.total);
     let i = 0;
     while (i < 24) {
-      if (i !== xAxisData[i]) {
-        xAxisData.splice(i, 0, i);
+      if (i !== +xAxisData[i]) {
+        xAxisData.splice(i, 0, i + '');
         seriesData1.splice(i, 0, 0);
       } else {
         i++;
       }
     }
-    return { xAxisData, seriesData1 };
+    const seriesData = [seriesData1];
+    return { xAxisData, seriesData };
   }
 
   @Get('/count/os')
@@ -91,19 +79,8 @@ export class LogsController {
   async handlePieBrowser(@Query() query): Promise<IEchartsNestedPiesData> {
     const startDate = new Date(+query.startDate);
     const endDate = query.endDate ? new Date(+query.endDate) : new Date(startDate.getTime() + 86400000);
-    let countByNamePromise: Promise<IAggregateResult[]>;
-    let countByVersionPromise: Promise<CountByVersion[]>;
-
-    // if (/\s/.test(query.os)) {
-    //   const osPattern = /(?<name>[A-Za-z]+)\s+(?<version>[\w\s\.]+)/;
-    //   const { name, version } = query.os.match(osPattern).groups;
-    //   countByNamePromise = this.logsService.countByBrowserName2(startDate, endDate, name, version);
-    //   countByVersionPromise =  this.logsService.countByBrowserVersion2(startDate, endDate, name, version);
-    // } else {
-      countByNamePromise = this.logsService.countByBrowserName(startDate, endDate);
-      countByVersionPromise = this.logsService.countByBrowserVersion(startDate, endDate);
-    // }
-
+    const countByNamePromise: Promise<IAggregateResult[]> = this.logsService.countByBrowserName(startDate, endDate);
+    const countByVersionPromise: Promise<CountByVersion[]> = this.logsService.countByBrowserVersion(startDate, endDate);
     const [err, [countByName, countByVersion]] = await to(Promise.all([
       countByNamePromise,
       countByVersionPromise
@@ -120,12 +97,8 @@ export class LogsController {
     const startDate = new Date(+query.startDate);
     const endDate = query.endDate ? new Date(+query.endDate) : new Date(startDate.getTime() + 86400000);
     const logCount = await this.logsService.countByState(startDate, endDate);
-    const legendData =[];
-    const seriesData = [];
-    logCount.forEach(o => {
-      legendData.push(o._id);
-      seriesData.push({ value: o.total, name: o._id });
-    });
+    const legendData = logCount.map(o => o._id);
+    const seriesData = logCount.map(o => ({ value: o.total, name: o._id }));
     return { legendData, seriesData };
   }
 
@@ -134,12 +107,8 @@ export class LogsController {
     const startDate = new Date(+query.startDate);
     const endDate = query.endDate ? new Date(+query.endDate) : new Date(startDate.getTime() + 86400000);
     const logCount = await this.logsService.countByMethod(startDate, endDate);
-    const legendData = [];
-    const seriesData = [];
-    logCount.forEach(o => {
-      legendData.push(o._id);
-      seriesData.push(o.total);
-    });
+    const legendData = logCount.map(o => o._id);
+    const seriesData = logCount.map(o => ({ value: o.total, name: o._id }));
     return { legendData, seriesData };
   }
 
@@ -148,13 +117,10 @@ export class LogsController {
     const startDate = new Date(+query.startDate);
     const endDate = query.endDate ? new Date(+query.endDate) : new Date(startDate.getTime() + 86400000);
     const logCount = await this.logsService.countByUser(startDate, endDate);
-    const xAxisData = [];
-    const seriesData1 = [];
-    logCount.forEach(o => {
-      xAxisData.push(o._id);
-      seriesData1.push(o.total);
-    });
-    return { xAxisData, seriesData1 };
+    const xAxisData = logCount.map(o => o._id);
+    const seriesData1 = logCount.map(o => o.total);
+    const seriesData = [seriesData1];
+    return { xAxisData, seriesData };
   }
 
   @Get('/ranking/source-page')
@@ -162,13 +128,10 @@ export class LogsController {
     const startDate = new Date(+query.startDate);
     const endDate = query.endDate ? new Date(+query.endDate) : new Date(startDate.getTime() + 86400000);
     const logCount = await this.logsService.countBySourcePage(startDate, endDate);
-    const xAxisData = [];
-    const seriesData1 = [];
-    logCount.forEach(o => {
-      xAxisData.push(o._id);
-      seriesData1.push(o.total);
-    });
-    return { xAxisData, seriesData1 };
+    const xAxisData = logCount.map(o => o._id);
+    const seriesData1 = logCount.map(o => o.total);
+    const seriesData = [seriesData1];
+    return { xAxisData, seriesData };
   }
 
   @Get('/ranking/request-path')
@@ -176,13 +139,10 @@ export class LogsController {
     const startDate = new Date(+query.startDate);
     const endDate = query.endDate ? new Date(+query.endDate) : new Date(startDate.getTime() + 86400000);
     const logCount = await this.logsService.countByRequestPath(startDate, endDate);
-    const xAxisData = [];
-    const seriesData1 = [];
-    logCount.forEach(o => {
-      xAxisData.push(o._id);
-      seriesData1.push(o.total);
-    });
-    return { xAxisData, seriesData1 };
+    const xAxisData = logCount.map(o => o._id);
+    const seriesData1 = logCount.map(o => o.total);
+    const seriesData = [seriesData1];
+    return { xAxisData, seriesData };
   }
 
   @Post('/detail')
@@ -193,7 +153,7 @@ export class LogsController {
       this.logsService.getCollectionLengthByRange(startDate, endDate, body.formData),
       this.logsService.findOnePageByRange(body.pageIndex, startDate, endDate, +body.size, body.formData)
     ]));
-    if(err) {
+    if (err) {
       console.log(err);
       return;
     }
@@ -204,11 +164,11 @@ export class LogsController {
   async handleToday() {
     const today = new Date();
     return (await this.logsService.countByDatePv(
-      new Date(today.setHours(0, 0, 0)), 
-      new Date(today.setHours(23,59,59))
+      new Date(today.setHours(0, 0, 0)),
+      new Date(today.setHours(23, 59, 59))
     ))[0].total;
   }
-  
+
   @Get('/statistics/history')
   async handleHistory() {
     return await this.logsService.getCollectionLength();

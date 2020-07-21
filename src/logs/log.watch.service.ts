@@ -7,7 +7,7 @@ import { Injectable } from '@nestjs/common';
 import { watchFile } from 'fs';
 import { LogSchema } from './schemas/log.schema';
 import { EventsGateway } from '../events/events.gateway';
-import { ILog } from './datatype';
+import { ILog } from './interfaces/log.interface';
 
 const libqqwry = require('lib-qqwry');
 const FILE = '/var/log/nginx/access.log';
@@ -36,7 +36,7 @@ function array2Object(result: RegExpMatchArray, id: string): ILog {
     _id: id,
     ipAddress,
     address,
-    accessTime: new Date(`${year}-${word2No.get(month)}-${date}T${time}${diff}`),
+    accessTime: new Date(`${year}-${word2No.get(month)}-${date}T${time}${diff}`).getTime(),
     requestMethod,
     requestPath,
     protocol,
